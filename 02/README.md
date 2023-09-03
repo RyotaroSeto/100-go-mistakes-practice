@@ -114,3 +114,56 @@ func init(){
 ## インターフェイスを返す
 - インターフェイスを返すと依存関係ができてしまう
 - インターフェイスを返す代わりに構造体を返す
+
+## ジェネリクスをいつ使うべきか混乱する
+- **データ構造**
+  - 例えば、二分木、リンクリスト、ヒープなどを実装する場合、ジェネリクスを使って要素の型を表せる
+- **任意の型のスライス、マップ、チャネルを処理する関数**
+  - 例えば、2つのチャンネルをマージする関数は、どのようなチャネル型でも動作する。したがって、型パラメータを使用してチャネル型を表せる。
+  ```go
+  func merge[T any](ch1, ch2 <-chan T) <- chan T {
+    // ...
+  }
+  ```
+- **型ではなく振る舞いを表す**
+  - 例えば、sortパッケージには、3つのメソッドを持つsort.Interfaceがある。
+  ```go
+  type Interface interface {
+    Len() int
+    Less(i, j int) bool
+    Swap(i, j int)
+  }
+  // 型パラメータを使用すればソート動作をくくり出せる
+  type SliceFn[T any] struct { // ← 型パラメータを使う
+	S       []T
+	Compare func(T, T) bool  // 2つのT要素を比較する
+  }
+  func (s SliceFn[T]) Len() int           { return len(s.S) }
+  func (s SliceFn[T]) Less(i, j int) bool { return s.Compare(s.S[i], s.S[j]) }
+  func (s SliceFn[T]) Swap(i, j int)      { s.S[i], s.S[j] = s.S[j], s.S[i] }
+
+  // そしてSliceFn構造体はsort.Interfaceを実装してるので、sort.Sort(sort.Interface)関数を使用してスライスをソートできる。
+  func main() {
+  	s := SliceFn[int]{
+  		S: []int{3, 2, 1},
+  		Compare: func(a, b int) bool {
+  			return a < b
+  		},
+  	}
+  	sort.Sort(s)
+  	fmt.Println(s.S)
+    //[1, 2, 3]
+  }
+  ```
+
+- 逆にジェネリクスを使用しない方が良い例
+  ```go
+  func foo[T io.Writer](w T) {
+    b := getBytes()
+    _ , _ = w.Write()
+  }
+  // この場合,w引数を直接io.Writerにすべき。
+  // ジェネリクスは必須ではない。Go1.18まで、ジェネリクスがなしだったため無理に使用しなくてもよい
+  // 不必要な抽象化でコードを汚染しないようにし、具体的な問題に解決することに集中すること
+  // つまり、時期尚早に型パラメータを使うべきではない。ジェネリクスを使うことを検討するのは、定期的に決まりきったコードを書こうとする時まで待つこと。
+  ```
