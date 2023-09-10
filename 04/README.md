@@ -70,3 +70,21 @@ func listing3() {
 	}
 }
 ```
+
+## マップの反復処理を誤った仮定をする
+mapは反復処理ごとに順序が異なる。順序付けが必要な場合、https://github.com/emirpasic/gods のような他のデータ構造に頼るべき
+
+## break文の仕組みを無視する
+以下のようにloopラベルをつけると`switch`文の`break`ではなく`for`文の`break`になる。`switch`けではなく`select`も同様
+```go
+loop:
+	for i := 0; i < 5; i++ {
+		fmt.Printf("%d ", i)
+
+		switch i {
+		default:
+		case 2:
+			break loop
+		}
+	}
+```
